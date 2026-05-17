@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"time"
@@ -26,13 +27,35 @@ func handleConnection(conn net.Conn){
 
 		reqPath := string(buff[:n]);
 
-		if reqPath == "/api"{
-			
-		}
-
 		fmt.Println("variable val: ", reqPath);
 
 		fmt.Println("Recieved data: ", string(buff[:n]));
+
+		targetConn, err := net.Dial("tcp", reqPath);
+
+		if err!= nil{
+			log.Println("Error during request client api: " ,err);
+		}
+
+		defer targetConn.Close()
+
+		errChan := make(chan error ,2);
+
+		go func (){
+			_ ,err:= io.Copy(targetConn , conn);
+			// if err != nil{
+			// 	fmt.Println("error occured during copying from tatget to conn");
+			// }
+			errChan <-err
+		}()
+
+		go func ()  {
+			_ ,err := io.Copy(conn , targetConn);
+			
+			errChan <-err
+		}()
+
+		<-errChan
 	}
 }
 
